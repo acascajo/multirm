@@ -2,7 +2,7 @@ import subprocess
 
 def obtener_nodos_libres():
     try:
-        # CORRECCIÓN IMPORTANTE: Pasamos el comando como lista.
+        # Pasamos el comando como lista.
         # Así aseguramos que "-o" recibe "%n %t" como un único bloque.
         # %n = NodeHostName, %t = StateCompact
         comando = ["sinfo", "-h", "-o", "%n %t"]
