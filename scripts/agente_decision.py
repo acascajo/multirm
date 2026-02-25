@@ -43,10 +43,10 @@ def obtener_metricas_slurm():
         
     except Exception as e:
         print(f"[ERROR] Fallo al consultar Slurm: {e}")
-        return 0, 0
+        return 0, 0, []
 
 def iniciar_agente():
-    print(f"--- AGENTE DE DECISIÓN INICIADO ---")
+    print(f"AGENTE DE DECISIÓN INICIADO")
     print(f"Configuración: Esperar {INTENTOS_PARA_MIGRAR} chequeos de {TIEMPO_ESPERA_SEGUNDOS} segundos antes de migrar.")
     
     conteo_estabilidad = 0
@@ -70,13 +70,13 @@ def iniciar_agente():
             # 3. ¿Hemos esperado lo suficiente? (TRIGGER)
             if conteo_estabilidad >= INTENTOS_PARA_MIGRAR:
                 if not modo_ahorro:
-                    print(f"   >>> ¡CONDICIÓN DE MIGRACIÓN ALCANZADA! <<<")
-                    print(f"   >>> Iniciando protocolo de ahorro energético en Raspberry Pi...")
+                    print(f"¡CONDICIÓN DE MIGRACIÓN ALCANZADA!")
+                    print(f"Iniciando protocolo de ahorro energético en Raspberry Pi...")
                     # Aquí iría la llamada a la función que despierta a la RPi
                     # resetear_contador() ? O mantenerlo hasta que suba la carga?
 
                     modo_ahorro = True
-                    print(f"   (Sistema entra en modo vigilancia silenciosa de ahorro)")
+                    print(f"(Sistema entra en modo vigilancia silenciosa de ahorro)")
                 
                 # Mantenemos el contador al máximo
                 conteo_estabilidad = INTENTOS_PARA_MIGRAR # Topeamos el contador
@@ -87,13 +87,13 @@ def iniciar_agente():
             conteo_estabilidad = 0
             
             # Si estábamos en modo ahorro y de repente se llena el cluster...
-            if modo_ahorro_activo:
+            if modo_ahorro:
                 print(f"[{timestamp}] ¡ATENCIÓN! Carga de trabajo detectada. Desactivando modo ahorro.")
-                print(f"   >>> Reactivando nodos x86...")
-                modo_ahorro_activo = False
+                print(f"Reactivando nodos x86...")
+                modo_ahorro = False
             
             print(f"[{timestamp}] Carga NORMAL/ALTA ({libres}/{total} libres).")
-            print(f"   >>> Nodos trabajando: {texto_ocupados}")
+            print(f"Nodos trabajando: {texto_ocupados}")
             
         # 4. Dormimos hasta el siguiente chequeo
         time.sleep(TIEMPO_ESPERA_SEGUNDOS)
