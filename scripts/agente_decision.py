@@ -1,5 +1,6 @@
 import subprocess
 import time
+import os
 from datetime import datetime
 
 # CONFIGURACION
@@ -8,6 +9,15 @@ TIEMPO_ESPERA_SEGUNDOS = 10   # Cada cuánto miramos Slurm
 INTENTOS_PARA_MIGRAR = 3      # Cuántas veces seguidas debe estar libre para actuar
 # Como son 3 intentos y 10 segundos por cada uno
 # Se requieren 3 * 10 = 30 segundos de estabilidad para migrar
+
+# CONFIGURACIÓN DE RED (mIGRACIÓN)
+# Hay q cambiar la IP de las raspberry cuando la sepa
+IP_RASPBERRY = "192.168.1.XX"
+USUARIO_PI = "pi"
+RUTA_REMOTA = "/home/pi/multirm/shared_data/"   # Donde se guardarán los json con los datos en la RPi
+SCRIPT_REMOTO = "/home/pi/multirm/scripts/contador.py"
+
+ARCHIVO_ESTADO_LOCAL = "../shared_data/estado_trabajo.json"
 
 
 def obtener_metricas_slurm():
@@ -45,6 +55,47 @@ def obtener_metricas_slurm():
         print(f"[ERROR] Fallo al consultar Slurm: {e}")
         return 0, 0, []
 
+
+def activar_migracion():
+    """Función que ejecuta los comandos reales de SCP y SSH"""
+    print(f"\n[MIGRACIÓN] Iniciando protocolo de transferencia...")
+    
+    # 1. Comprobar si existe el archivo de estado
+    if not os.path.exists(ARCHIVO_ESTADO_LOCAL):
+        print(f"[ERROR] No encuentro el archivo {ARCHIVO_ESTADO_LOCAL}. Comprueba que el trabajo está corriendo")
+        return False
+
+    try:
+        # 2. ENVIAR DATOS (SCP)
+        # Comando: scp ../shared_data/estado.json pi@192.168.1.XX:/home/pi/...
+        print(f"[1/2] Enviando Checkpoint a {IP_RASPBERRY}...")
+        cmd_scp = [
+            "scp", 
+            ARCHIVO_ESTADO_LOCAL, 
+            f"{USUARIO_PI}@{IP_RASPBERRY}:{RUTA_REMOTA}"
+        ]
+        # Nota: Esto fallará hasta q no tenga configuradas las claves SSH
+        # subprocess.run(cmd_scp, check=True) 
+        print(f"[SIMULACIÓN] Copia SCP realizada (Comando preparado).")
+
+        # 3. EJECUTAR EN RASPBERRY (SSH)
+        # Comando: ssh pi@192.168.1.XX 'python3 /home/pi/.../job_contador.py'
+        print(f"[2/2] Reactivando proceso en nodo ARM...")
+        cmd_ssh = [
+            "ssh",
+            f"{USUARIO_PI}@{IP_RASPBERRY}",
+            f"python3 {SCRIPT_REMOTO}"
+        ]
+        # subprocess.Popen(cmd_ssh) # Usamos Popen para no bloquear este script
+        print(f"[SIMULACIÓN] Comando SSH enviado: python3 {SCRIPT_REMOTO}")
+        
+        return True
+
+    except Exception as e:
+        print(f"   [ERROR CRÍTICO] La migración falló: {e}")
+        return False
+
+
 def iniciar_agente():
     print(f"AGENTE DE DECISIÓN INICIADO")
     print(f"Configuración: Esperar {INTENTOS_PARA_MIGRAR} chequeos de {TIEMPO_ESPERA_SEGUNDOS} segundos antes de migrar.")
@@ -71,12 +122,18 @@ def iniciar_agente():
             if conteo_estabilidad >= INTENTOS_PARA_MIGRAR:
                 if not modo_ahorro:
                     print(f"¡CONDICIÓN DE MIGRACIÓN ALCANZADA!")
-                    print(f"Iniciando protocolo de ahorro energético en Raspberry Pi...")
-                    # Aquí iría la llamada a la función que despierta a la RPi
-                    # resetear_contador() ? O mantenerlo hasta que suba la carga?
 
-                    modo_ahorro = True
-                    print(f"(Sistema entra en modo vigilancia silenciosa de ahorro)")
+                    exito = activar_migracion()
+
+                    if exito:
+                        modo_ahorro = True
+                        print(f"(Sistema entra en modo vigilancia silenciosa de ahorro)")
+
+                    else:
+                        # Si falla (ej: no encuentra el archivo), seguimos intentándolo en la siguiente vuelta
+                        # o ponemos modo_ahorro=True para simular que ha ido bien por ahora
+                        print(f"   (Simulación completada / Fallo controlado)")
+                        modo_ahorro = True
                 
                 # Mantenemos el contador al máximo
                 conteo_estabilidad = INTENTOS_PARA_MIGRAR # Topeamos el contador
