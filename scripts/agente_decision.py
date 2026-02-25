@@ -92,7 +92,7 @@ def activar_migracion():
         return True
 
     except Exception as e:
-        print(f"   [ERROR CRÍTICO] La migración falló: {e}")
+        print(f"[ERROR CRÍTICO] La migración falló: {e}")
         return False
 
 
@@ -132,7 +132,7 @@ def iniciar_agente():
                     else:
                         # Si falla (ej: no encuentra el archivo), seguimos intentándolo en la siguiente vuelta
                         # o ponemos modo_ahorro=True para simular que ha ido bien por ahora
-                        print(f"   (Simulación completada / Fallo controlado)")
+                        print(f"(Simulación completada / Fallo controlado)")
                         modo_ahorro = True
                 
                 # Mantenemos el contador al máximo
