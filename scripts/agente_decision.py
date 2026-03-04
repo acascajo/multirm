@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 
 # CONFIGURACION
-UMBRAL_NODOS_LIBRES = 6       # Mínimo de nodos libres para considerar migrar (aun no se cuantos es un ejemplo)
+UMBRAL_PORCENTAJE_LIBRES = 70       # % Mínimo de nodos libres para considerar migrar
 TIEMPO_ESPERA_SEGUNDOS = 10   # Cada cuánto miramos Slurm
 INTENTOS_PARA_MIGRAR = 3      # Cuántas veces seguidas debe estar libre para actuar
 # Como son 3 intentos y 10 segundos por cada uno
@@ -104,55 +104,46 @@ def iniciar_agente():
     modo_ahorro = False
     
     while True:
-        # 1. Obtenemos datos
+        # Obtenemos datos
         total, libres, ocupados = obtener_metricas_slurm()
         timestamp = datetime.now().strftime("%H:%M:%S")
-        
-        # Generamos el texto de ocupados para mostrarlo si hace falta
         texto_ocupados = ", ".join(ocupados) if ocupados else "Ninguno"
 
-        # 2. Evaluamos la situación
-        if libres >= UMBRAL_NODOS_LIBRES:
+        # Calculamos el porcentaje real (evitando división por cero)
+        porcentaje_libres = 0
+        if total > 0:
+            porcentaje_libres = (libres / total) * 100
+
+        # Evaluamos la situación basándonos en el porcentaje
+        if porcentaje_libres >= UMBRAL_PORCENTAJE_LIBRES:
             conteo_estabilidad += 1
             
             if not modo_ahorro:
-                print(f"[{timestamp}] Carga BAJA detectada ({libres}/{total} libres). Ocupados: [{texto_ocupados}]. Estabilidad: {conteo_estabilidad}/{INTENTOS_PARA_MIGRAR}")
+                # Mostramos el porcentaje con 1 decimal para que quede profesional
+                print(f"[{timestamp}] Carga BAJA ({porcentaje_libres:.1f}% libre | {libres}/{total} nodos). Estabilidad: {conteo_estabilidad}/{INTENTOS_PARA_MIGRAR}")
             
-            # 3. ¿Hemos esperado lo suficiente? (TRIGGER)
             if conteo_estabilidad >= INTENTOS_PARA_MIGRAR:
                 if not modo_ahorro:
-                    print(f"¡CONDICIÓN DE MIGRACIÓN ALCANZADA!")
-
+                    print(f"   >>> ¡CONDICIÓN DE MIGRACIÓN ALCANZADA (>={UMBRAL_PORCENTAJE_LIBRES}%)! <<<")
                     exito = activar_migracion()
-
                     if exito:
                         modo_ahorro = True
-                        print(f"(Sistema entra en modo vigilancia silenciosa de ahorro)")
-
+                        print(f"   (Sistema entra en modo vigilancia silenciosa de ahorro)")
                     else:
-                        # Si falla (ej: no encuentra el archivo), seguimos intentándolo en la siguiente vuelta
-                        # o ponemos modo_ahorro=True para simular que ha ido bien por ahora
-                        print(f"(Simulación completada / Fallo controlado)")
-                        modo_ahorro = True
+                        print(f"   (Simulación completada / Fallo controlado)")
+                        modo_ahorro = True 
                 
-                # Mantenemos el contador al máximo
-                conteo_estabilidad = INTENTOS_PARA_MIGRAR # Topeamos el contador
+                conteo_estabilidad = INTENTOS_PARA_MIGRAR 
 
-                
         else:
-            # Caso: Carga ALTA o NORMAL
             conteo_estabilidad = 0
-            
-            # Si estábamos en modo ahorro y de repente se llena el cluster...
             if modo_ahorro:
                 print(f"[{timestamp}] ¡ATENCIÓN! Carga de trabajo detectada. Desactivando modo ahorro.")
-                print(f"Reactivando nodos x86...")
+                print(f"   >>> Reactivando nodos x86...")
                 modo_ahorro = False
             
-            print(f"[{timestamp}] Carga NORMAL/ALTA ({libres}/{total} libres).")
-            print(f"Nodos trabajando: {texto_ocupados}")
+            print(f"[{timestamp}] Carga NORMAL/ALTA ({porcentaje_libres:.1f}% libre | {libres}/{total} nodos). Nodos trabajando: {texto_ocupados}")
             
-        # 4. Dormimos hasta el siguiente chequeo
         time.sleep(TIEMPO_ESPERA_SEGUNDOS)
 
 if __name__ == "__main__":
