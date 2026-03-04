@@ -124,13 +124,13 @@ def iniciar_agente():
             
             if conteo_estabilidad >= INTENTOS_PARA_MIGRAR:
                 if not modo_ahorro:
-                    print(f"   >>> ¡CONDICIÓN DE MIGRACIÓN ALCANZADA (>={UMBRAL_PORCENTAJE_LIBRES}%)! <<<")
+                    print(f"¡CONDICIÓN DE MIGRACIÓN ALCANZADA (>={UMBRAL_PORCENTAJE_LIBRES}%)!")
                     exito = activar_migracion()
                     if exito:
                         modo_ahorro = True
-                        print(f"   (Sistema entra en modo vigilancia silenciosa de ahorro)")
+                        print(f"(Sistema entra en modo vigilancia silenciosa de ahorro)")
                     else:
-                        print(f"   (Simulación completada / Fallo controlado)")
+                        print(f"(Simulación completada / Fallo controlado)")
                         modo_ahorro = True 
                 
                 conteo_estabilidad = INTENTOS_PARA_MIGRAR 
